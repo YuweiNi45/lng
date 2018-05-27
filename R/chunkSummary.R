@@ -1,3 +1,4 @@
+data<-packagesample
 chunkSummary<- function(data){
   n<-nrow(data)
   n1<-ceiling(n/4)
@@ -8,6 +9,11 @@ chunkSummary<- function(data){
   dat2<-data[(n1+1):n2,,]
   dat3<-data[(n2+1):n3,,]
   dat4<-data[(n3+1):n4,,]
-  dat1
+
+  nvar<-ncol(data)
+  for(i in 1:nvar){
+
+  }
+
   dat2
 }
