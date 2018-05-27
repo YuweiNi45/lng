@@ -9,4 +9,5 @@ chunkSummary<- function(data){
   dat3<-data[(n2+1):n3,,]
   dat4<-data[(n3+1):n4,,]
   dat1
+  dat2
 }
