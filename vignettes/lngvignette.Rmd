@@ -1,0 +1,1635 @@
+---
+title: "Basic functions for observational studies"
+author: "Meng Lan, Yuwei Ni and Xinye Gui"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Abstract
+
+This document gives a gallery of complete and well-formatted summary tables and results which can be made using the lng package to perform a general analysis for observational studies. To do basic demographic analysis, tables concaining descriptive statistics concerning the variables of interest and characteristics of study population are provided. To better display the univariate analysis, the package produces summary tables for univariate linear and logistic regression results. Suggested potential confounding variables are also provided for users to better do the model selection. Finally, summary tables for the results of multivariate linear and logistic regression are generated using the package.
+
+## Introduction
+
+Generic functions to do a general analysis for observational studies.
+
+```{r, include=FALSE,echo=TRUE}
+suppressMessages(devtools::install_github("YuweiNi45/lng"))
+suppressWarnings(library(lng))
+```
+
+```{r,include=FALSE, echo=FALSE}
+packagesample$Education <- factor(packagesample$Education)
+packagesample$MaritalStatus <- factor(packagesample$MaritalStatus)
+packagesample$Diabetes <- factor(packagesample$Diabetes)
+```
+
+## Examples
+
+### Data description
+
+To better illustrate the use of the four functions in our package, we use part of the NHANCE data as sample data. Here are the description of all the variables.
+
+Age: Age in years at screening of study participant.
+
+Education: Educational level of study participant Reported for participants aged 20 years or older. One of 8thGrade, 9-11thGrade, HighSchool, SomeCollege, or CollegeGrad.
+
+MaritalStatus: Marital status of study participant. Reported for participants aged 20 years or older. One of Married, Widowed, Divorced, Separated, NeverMarried, or LivePartner (living with partner).
+
+Weight: Weight in kg
+
+Height: Standing height in cm. Reported for participants aged 2 years or older.
+
+BMI: Body mass index (weight/height2 in kg/m2). Reported for participants aged 2 years or older.
+
+TotChol: Total HDL cholesterol in mmol/L. Reported for participants aged 6 years or older.
+
+Diabetes: Study participant told by a doctor or health professional that they have diabetes. Reported for participants aged 1 year or older as Yes or No.
+
+### Descriptive statistical analysis table
+
+For observational studies, the first step is statistical analysis for generating descriptive statistics concerning the outcome variable of interest and characteristics of study population.
+
+```{r, include=FALSE, echo=FALSE}
+decrib <-
+  function(packagesample,
+           y = NULL,
+           alternative = c("overall", "total", "bygroup"),
+           digit = 2,
+           ...) {
+    alternative <- match.arg(alternative)
+    #testing data
+    #packagesample <- data2
+    
+    #y <- packagesample$TotChol
+    
+    ##get the names done for each colomn of the final table for different groups
+    if (!is.null(y)) {
+      y_length <- length(y)
+      
+      data_names <- colnames(packagesample)
+      
+      name_length <- length(data_names)
+      
+      result <- numeric(name_length)
+      
+      for (i in 1:name_length) {
+        result[i] <- sum(y %in% factor(unlist(packagesample[data_names[i]])))
+      }
+      
+      ncol_y <- which(result == y_length)
+      
+      y_group <- data_names[ncol_y]
+      
+      
+      
+      #data just includes the covariates
+      
+      packagesample_noy <- packagesample[,-ncol_y]
+      
+      #get the Total column done
+      
+      ###know which variable is continuous and which is categorical
+      
+      ncol_allx <- ncol(packagesample_noy)
+      
+      all_level <- numeric(ncol_allx)
+      
+      for (i in 1:ncol_allx) {
+        if (!is.null(levels(unlist(packagesample_noy[, i])))) {
+          all_level[i] <- length(levels(unlist(packagesample_noy[, i])))
+        }
+      }
+      
+      max_level <- max(all_level)
+      
+      ## if we only have continuous variables
+      if ((sum(all_level > 0)) == 0) {
+        result_tol_mec <- numeric(ncol_allx)
+        
+        result_tol_sd <- numeric(ncol_allx)
+        
+        con_names <- colnames(packagesample_noy)
+        
+        for (i in 1:ncol_allx) {
+          result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+          result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+        }
+        
+        ##create the table for continuous variables' total
+        out1 <- data.frame(Total = paste0(
+          format(result_tol_mec, digits = digit),
+          "+/-",
+          format(result_tol_sd, digits = digit)
+        ))
+        
+        colnames(out1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1) <- con_names
+        
+        out_totalnum <- out1
+        
+      }
+      ## if we only have cateorical variables
+      else if ((sum(all_level > 0)) == ncol_allx) {
+        result_tol_count <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        result_tol_freq <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        
+        cat_names <- colnames(packagesample_noy)
+        
+        cat_names_each <- character(0)
+        
+        for (i in 1:ncol_allx) {
+          levels_cat <- levels(unlist(packagesample_noy[, i]))
+          nlevel <- length(levels_cat)
+          for (j in 1:nlevel) {
+            cat_names_each <-
+              c(cat_names_each,
+                paste0(cat_names[i], ": ", levels_cat[j]))
+            result_tol_count[i, j] <-
+              length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+            result_tol_freq[i, j] <-
+              length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+          }
+        }
+        
+        #get categorical varaibles ready
+        
+        result_tol_count1 <-
+          result_tol_count[which(!cat_names == ""), ]
+        
+        result_tol_freq1 <-
+          result_tol_freq[which(!cat_names == ""), ]
+        
+        cat_total_count <- numeric(0)
+        
+        cat_total_freq <- numeric(0)
+        
+        if (!is.null(nrow(result_tol_count1))) {
+          for (i in 1:nrow(result_tol_count1)) {
+            if (!is.null(ncol(result_tol_count1))) {
+              for (j in 1:ncol(result_tol_count1)) {
+                if (!is.na(result_tol_count1[i, j])) {
+                  cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                  cat_total_freq <-
+                    c(cat_total_freq, result_tol_freq1[i, j])
+                }
+              }
+            }
+            else {
+              if (!is.na(result_tol_count1[i])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[i])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[i])
+              }
+            }
+            
+          }
+        } else {
+          if (!is.null(ncol(result_tol_count1))) {
+            for (j in 1:ncol(result_tol_count1)) {
+              if (!is.na(result_tol_count1[j])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[j])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[j])
+              }
+            }
+          } else {
+            cat_total_count <- result_tol_count1
+            cat_total_freq <- result_tol_freq1
+          }
+        }
+        
+        ##create the table for categorical variables' total
+        
+        out1_1 <- data.frame(Total = paste0(
+          format(cat_total_count, digits = digit),
+          " (",
+          format(cat_total_freq * 100, digits = digit),
+          ")"
+        ))
+        
+        colnames(out1_1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1_1) <- cat_names_each
+        
+        out_totalnum <- out1_1
+      }
+      ##we have both continuous and categorical variables
+      else{
+        result_tol_mec <- numeric(ncol_allx)
+        
+        result_tol_sd <- numeric(ncol_allx)
+        
+        result_tol_count <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        result_tol_freq <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        
+        #as.character(unlist(packagesample_noy[, 1]))
+        
+        all_var_names <- colnames(packagesample_noy)
+        
+        con_names <- character(ncol_allx)
+        
+        cat_names <- character(ncol_allx)
+        
+        cat_names_each <- character(0)
+        
+        for (i in 1:ncol_allx) {
+          if (all_level[i] == 0) {
+            con_names[i] <- all_var_names[i]
+            result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+            result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+          } else if (all_level[i] != 0) {
+            levels_cat <- levels(unlist(packagesample_noy[, i]))
+            nlevel <- length(levels_cat)
+            cat_names[i] <- all_var_names[i]
+            for (j in 1:nlevel) {
+              cat_names_each <-
+                c(cat_names_each,
+                  paste0(cat_names[i], ": ", levels_cat[j]))
+              result_tol_count[i, j] <-
+                length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+              result_tol_freq[i, j] <-
+                length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+            }
+          }
+          
+        }
+        
+        #get continuoius variables ready
+        
+        con_names1 <- con_names[-which(con_names == "")]
+        
+        result_tol_mec1 <-
+          result_tol_mec[-which(result_tol_mec == 0)]
+        
+        result_tol_sd1 <- result_tol_sd[-which(result_tol_sd == 0)]
+        
+        ##create the table for continuous variables' total
+        out1 <- data.frame(Total = paste0(
+          format(result_tol_mec1, digits = digit),
+          "+/-",
+          format(result_tol_sd1, digits = digit)
+        ))
+        
+        colnames(out1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1) <- con_names1
+        
+        
+        #get categorical varaibles ready
+        
+        all_level1 <- all_level[-which(all_level == 0)]
+        
+        cat_names1 <- cat_names[-which(cat_names == "")]
+        
+        result_tol_count1 <-
+          result_tol_count[which(!cat_names == ""), ]
+        
+        result_tol_freq1 <-
+          result_tol_freq[which(!cat_names == ""), ]
+        
+        cat_total_count <- numeric(0)
+        
+        cat_total_freq <- numeric(0)
+        
+        if (!is.null(nrow(result_tol_count1))) {
+          for (i in 1:nrow(result_tol_count1)) {
+            if (!is.null(ncol(result_tol_count1))) {
+              for (j in 1:ncol(result_tol_count1)) {
+                if (!is.na(result_tol_count1[i, j])) {
+                  cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                  cat_total_freq <-
+                    c(cat_total_freq, result_tol_freq1[i, j])
+                }
+              }
+            }
+            else {
+              if (!is.na(result_tol_count1[i])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[i])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[i])
+              }
+            }
+            
+          }
+        } else {
+          if (!is.null(ncol(result_tol_count1))) {
+            for (j in 1:ncol(result_tol_count1)) {
+              if (!is.na(result_tol_count1[j])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[j])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[j])
+              }
+            }
+          } else {
+            cat_total_count <- result_tol_count1
+            cat_total_freq <- result_tol_freq1
+          }
+        }
+        
+        ##create the table for categorical variables' total
+        
+        out1_1 <- data.frame(Total = paste0(
+          format(cat_total_count, digits = digit),
+          " (",
+          format(cat_total_freq * 100, digits = digit),
+          ")"
+        ))
+        
+        colnames(out1_1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1_1) <- cat_names_each
+        
+        
+        ##create the total table by combining these two tables!!!! finally!!!! we made it !!!!
+        
+        out_total <- rbind(out1, out1_1)
+        
+        out_totalnum <- out_total
+      }
+      
+      
+      
+      #===================================================================================================================#
+      #===================================================================================================================#
+      
+      
+      
+      ##create the table for different groups
+      out_all <- out_totalnum
+      
+      
+      if (is.null(levels(y))) {
+        out_all <- out_all
+      } else{
+        group_levels <- levels(y)
+        ngroup_levels <- length(group_levels)
+        
+        for (g in 1:ngroup_levels) {
+          packagesample1 <- packagesample[which(y == group_levels[g]),]
+          
+          packagesample_noy <- packagesample1[,-ncol_y]
+          
+          ncol_allx <- ncol(packagesample_noy)
+          
+          all_level <- numeric(ncol_allx)
+          
+          for (i in 1:ncol_allx) {
+            if (!is.null(levels(unlist(packagesample_noy[, i])))) {
+              all_level[i] <- length(levels(unlist(packagesample_noy[, i])))
+            }
+          }
+          
+          max_level <- max(all_level)
+          
+          
+          
+          ## if we only have continuous variables
+          if ((sum(all_level > 0)) == 0) {
+            result_tol_mec <- numeric(ncol_allx)
+            
+            result_tol_sd <- numeric(ncol_allx)
+            
+            con_names <- colnames(packagesample_noy)
+            
+            for (i in 1:ncol_allx) {
+              result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+              result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+            }
+            
+            ##create the table for continuous variables' total
+            out1 <- data.frame(Total = paste0(
+              format(result_tol_mec, digits = digit),
+              "+/-",
+              format(result_tol_sd, digits = digit)
+            ))
+            
+            colnames(out1) <-
+              c("Total [Mean (SD) or N(%)]")
+            
+            rownames(out1) <- con_names
+            
+            out_total <- out1
+            
+          }
+          ## if we only have cateorical variables
+          else if ((sum(all_level > 0)) == ncol_allx) {
+            result_tol_count <-
+              matrix(nrow = ncol_allx, ncol = max_level)
+            result_tol_freq <-
+              matrix(nrow = ncol_allx, ncol = max_level)
+            
+            cat_names <- colnames(packagesample_noy)
+            
+            cat_names_each <- character(0)
+            
+            for (i in 1:ncol_allx) {
+              levels_cat <- levels(unlist(packagesample_noy[, i]))
+              nlevel <- length(levels_cat)
+              cat_names[i] <- all_var_names[i]
+              for (j in 1:nlevel) {
+                cat_names_each <-
+                  c(cat_names_each,
+                    paste0(cat_names[i], ": ", levels_cat[j]))
+                result_tol_count[i, j] <-
+                  length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+                result_tol_freq[i, j] <-
+                  length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+              }
+            }
+            
+            #get categorical varaibles ready
+            
+            result_tol_count1 <-
+              result_tol_count[which(!cat_names == ""), ]
+            
+            result_tol_freq1 <-
+              result_tol_freq[which(!cat_names == ""), ]
+            
+            cat_total_count <- numeric(0)
+            
+            cat_total_freq <- numeric(0)
+            
+            if (!is.null(nrow(result_tol_count1))) {
+              for (i in 1:nrow(result_tol_count1)) {
+                if (!is.null(ncol(result_tol_count1))) {
+                  for (j in 1:ncol(result_tol_count1)) {
+                    if (!is.na(result_tol_count1[i, j])) {
+                      cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                      cat_total_freq <-
+                        c(cat_total_freq, result_tol_freq1[i, j])
+                    }
+                  }
+                }
+                else {
+                  if (!is.na(result_tol_count1[i])) {
+                    cat_total_count <- c(cat_total_count, result_tol_count1[i])
+                    cat_total_freq <-
+                      c(cat_total_freq, result_tol_freq1[i])
+                  }
+                }
+                
+              }
+            } else {
+              if (!is.null(ncol(result_tol_count1))) {
+                for (j in 1:ncol(result_tol_count1)) {
+                  if (!is.na(result_tol_count1[j])) {
+                    cat_total_count <- c(cat_total_count, result_tol_count1[j])
+                    cat_total_freq <-
+                      c(cat_total_freq, result_tol_freq1[j])
+                  }
+                }
+              } else {
+                cat_total_count <- result_tol_count1
+                cat_total_freq <- result_tol_freq1
+              }
+            }
+            ##create the table for categorical variables' total
+            
+            out1_1 <- data.frame(Total = paste0(
+              format(cat_total_count, digits = digit),
+              " (",
+              format(cat_total_freq * 100, digits = digit),
+              ")"
+            ))
+            
+            colnames(out1_1) <-
+              c("Total [Mean (SD) or N(%)]")
+            
+            rownames(out1_1) <- cat_names_each
+            
+            out_total <- out1_1
+          }
+          ##we have both continuous and categorical variables
+          else{
+            result_tol_mec <- numeric(ncol_allx)
+            
+            result_tol_sd <- numeric(ncol_allx)
+            
+            result_tol_count <-
+              matrix(nrow = ncol_allx, ncol = max_level)
+            result_tol_freq <-
+              matrix(nrow = ncol_allx, ncol = max_level)
+            
+            #as.character(unlist(packagesample_noy[, 1]))
+            
+            all_var_names <- colnames(packagesample_noy)
+            
+            con_names <- character(ncol_allx)
+            
+            cat_names <- character(ncol_allx)
+            
+            cat_names_each <- character(0)
+            
+            for (i in 1:ncol_allx) {
+              if (all_level[i] == 0) {
+                con_names[i] <- all_var_names[i]
+                result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+                result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+              } else if (all_level[i] != 0) {
+                levels_cat <- levels(unlist(packagesample_noy[, i]))
+                nlevel <- length(levels_cat)
+                cat_names[i] <- all_var_names[i]
+                for (j in 1:nlevel) {
+                  cat_names_each <-
+                    c(cat_names_each,
+                      paste0(cat_names[i], ": ", levels_cat[j]))
+                  result_tol_count[i, j] <-
+                    length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+                  result_tol_freq[i, j] <-
+                    length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+                }
+              }
+              
+            }
+            
+            #get continuoius variables ready
+            
+            con_names1 <- con_names[-which(con_names == "")]
+            
+            result_tol_mec1 <-
+              result_tol_mec[-which(result_tol_mec == 0)]
+            
+            result_tol_sd1 <-
+              result_tol_sd[-which(result_tol_sd == 0)]
+            
+            ##create the table for continuous variables' total
+            out1 <- data.frame(Total = paste0(
+              format(result_tol_mec1, digits = digit),
+              "+/-",
+              format(result_tol_sd1, digits = digit)
+            ))
+            
+            colnames(out1) <-
+              c("Total [Mean (SD) or N(%)]")
+            
+            rownames(out1) <- con_names1
+            
+            
+            #get categorical varaibles ready
+            
+            all_level1 <- all_level[-which(all_level == 0)]
+            
+            cat_names1 <- cat_names[-which(cat_names == "")]
+            
+            result_tol_count1 <-
+              result_tol_count[which(!cat_names == ""), ]
+            
+            result_tol_freq1 <-
+              result_tol_freq[which(!cat_names == ""), ]
+            
+            cat_total_count <- numeric(0)
+            
+            cat_total_freq <- numeric(0)
+            
+            if (!is.null(nrow(result_tol_count1))) {
+              for (i in 1:nrow(result_tol_count1)) {
+                if (!is.null(ncol(result_tol_count1))) {
+                  for (j in 1:ncol(result_tol_count1)) {
+                    if (!is.na(result_tol_count1[i, j])) {
+                      cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                      cat_total_freq <-
+                        c(cat_total_freq, result_tol_freq1[i, j])
+                    }
+                  }
+                }
+                else {
+                  if (!is.na(result_tol_count1[i])) {
+                    cat_total_count <- c(cat_total_count, result_tol_count1[i])
+                    cat_total_freq <-
+                      c(cat_total_freq, result_tol_freq1[i])
+                  }
+                }
+                
+              }
+            } else {
+              if (!is.null(ncol(result_tol_count1))) {
+                for (j in 1:ncol(result_tol_count1)) {
+                  if (!is.na(result_tol_count1[j])) {
+                    cat_total_count <- c(cat_total_count, result_tol_count1[j])
+                    cat_total_freq <-
+                      c(cat_total_freq, result_tol_freq1[j])
+                  }
+                }
+              } else {
+                cat_total_count <- result_tol_count1
+                cat_total_freq <- result_tol_freq1
+              }
+            }
+            
+            ##create the table for categorical variables' total
+            
+            out1_1 <- data.frame(Total = paste0(
+              format(cat_total_count, digits = digit),
+              " (",
+              format(cat_total_freq * 100, digits = digit),
+              ")"
+            ))
+            
+            colnames(out1_1) <-
+              c("Total [Mean (SD) or N(%)]")
+            
+            rownames(out1_1) <- cat_names_each
+            
+            
+            ##create the total table by combining these two tables!!!! finally!!!! we made it !!!!
+            
+            out_total <- rbind(out1, out1_1)
+          }
+          #mkaing the tablw that combines both total and subgroups
+          out_all <- cbind(out_all, out_total)
+        }
+        if (alternative == "total") {
+          out_all <- out_totalnum
+        } else if (alternative == "bygroup") {
+          out_all <-
+            out_all[-which(colnames(out_all) == colnames(out_totalnum))]
+        } else {
+          out_all <- out_all
+        }
+      }
+      
+      
+    }
+    # if y is missing
+    else {
+      packagesample_noy <- packagesample
+      
+      #get the Total column done
+      
+      ###know which variable is continuous and which is categorical
+      
+      ncol_allx <- ncol(packagesample_noy)
+      
+      all_level <- numeric(ncol_allx)
+      
+      for (i in 1:ncol_allx) {
+        if (!is.null(levels(unlist(packagesample_noy[, i])))) {
+          all_level[i] <- length(levels(unlist(packagesample_noy[, i])))
+        }
+      }
+      
+      max_level <- max(all_level)
+      
+      ## if we only have continuous variables
+      if ((sum(all_level > 0)) == 0) {
+        result_tol_mec <- numeric(ncol_allx)
+        
+        result_tol_sd <- numeric(ncol_allx)
+        
+        con_names <- colnames(packagesample_noy)
+        
+        for (i in 1:ncol_allx) {
+          result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+          result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+        }
+        
+        ##create the table for continuous variables' total
+        out1 <- data.frame(Total = paste0(
+          format(result_tol_mec, digits = digit),
+          "+/-",
+          format(result_tol_sd, digits = digit)
+        ))
+        
+        colnames(out1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1) <- con_names
+        
+        out_all <- out1
+        
+      }
+      ## if we only have cateorical variables
+      else if ((sum(all_level > 0)) == ncol_allx) {
+        result_tol_count <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        result_tol_freq <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        
+        cat_names <- colnames(packagesample_noy)
+        
+        cat_names_each <- character(0)
+        
+        for (i in 1:ncol_allx) {
+          levels_cat <- levels(unlist(packagesample_noy[, i]))
+          nlevel <- length(levels_cat)
+          cat_names[i] <- all_var_names[i]
+          for (j in 1:nlevel) {
+            cat_names_each <-
+              c(cat_names_each,
+                paste0(cat_names[i], ": ", levels_cat[j]))
+            result_tol_count[i, j] <-
+              length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+            result_tol_freq[i, j] <-
+              length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+          }
+        }
+        
+        #get categorical varaibles ready
+        
+        result_tol_count1 <-
+          result_tol_count[which(!cat_names == ""), ]
+        
+        result_tol_freq1 <-
+          result_tol_freq[which(!cat_names == ""), ]
+        
+        cat_total_count <- numeric(0)
+        
+        cat_total_freq <- numeric(0)
+        
+        if (!is.null(nrow(result_tol_count1))) {
+          for (i in 1:nrow(result_tol_count1)) {
+            if (!is.null(ncol(result_tol_count1))) {
+              for (j in 1:ncol(result_tol_count1)) {
+                if (!is.na(result_tol_count1[i, j])) {
+                  cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                  cat_total_freq <-
+                    c(cat_total_freq, result_tol_freq1[i, j])
+                }
+              }
+            }
+            else {
+              if (!is.na(result_tol_count1[i])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[i])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[i])
+              }
+            }
+            
+          }
+        } else {
+          if (!is.null(ncol(result_tol_count1))) {
+            for (j in 1:ncol(result_tol_count1)) {
+              if (!is.na(result_tol_count1[j])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[j])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[j])
+              }
+            }
+          } else {
+            cat_total_count <- result_tol_count1
+            cat_total_freq <- result_tol_freq1
+          }
+        }
+        
+        ##create the table for categorical variables' total
+        
+        out1_1 <- data.frame(Total = paste0(
+          format(cat_total_count, digits = digit),
+          " (",
+          format(cat_total_freq * 100, digits = digit),
+          ")"
+        ))
+        
+        colnames(out1_1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1_1) <- cat_names_each
+        
+        out_all <- out1_1
+      }
+      ##we have both continuous and categorical variables
+      else{
+        result_tol_mec <- numeric(ncol_allx)
+        
+        result_tol_sd <- numeric(ncol_allx)
+        
+        result_tol_count <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        result_tol_freq <-
+          matrix(nrow = ncol_allx, ncol = max_level)
+        
+        #as.character(unlist(packagesample_noy[, 1]))
+        
+        all_var_names <- colnames(packagesample_noy)
+        
+        con_names <- character(ncol_allx)
+        
+        cat_names <- character(ncol_allx)
+        
+        cat_names_each <- character(0)
+        
+        for (i in 1:ncol_allx) {
+          if (all_level[i] == 0) {
+            con_names[i] <- all_var_names[i]
+            result_tol_mec[i] <- mean(unlist(packagesample_noy[, i]))
+            result_tol_sd[i] <- sd(unlist(packagesample_noy[, i]))
+          } else if (all_level[i] != 0) {
+            levels_cat <- levels(unlist(packagesample_noy[, i]))
+            nlevel <- length(levels_cat)
+            cat_names[i] <- all_var_names[i]
+            for (j in 1:nlevel) {
+              cat_names_each <-
+                c(cat_names_each,
+                  paste0(cat_names[i], ": ", levels_cat[j]))
+              result_tol_count[i, j] <-
+                length(which(unlist(packagesample_noy[, i]) == levels_cat[j]))
+              result_tol_freq[i, j] <-
+                length(which(unlist(packagesample_noy[, i]) == levels_cat[j])) / length(unlist(packagesample_noy[, i]))
+            }
+          }
+          
+        }
+        
+        #get continuoius variables ready
+        
+        con_names1 <- con_names[-which(con_names == "")]
+        
+        result_tol_mec1 <-
+          result_tol_mec[-which(result_tol_mec == 0)]
+        
+        result_tol_sd1 <- result_tol_sd[-which(result_tol_sd == 0)]
+        
+        ##create the table for continuous variables' total
+        out1 <- data.frame(Total = paste0(
+          format(result_tol_mec1, digits = digit),
+          "+/-",
+          format(result_tol_sd1, digits = digit)
+        ))
+        
+        colnames(out1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1) <- con_names1
+        
+        
+        #get categorical varaibles ready
+        
+        all_level1 <- all_level[-which(all_level == 0)]
+        
+        cat_names1 <- cat_names[-which(cat_names == "")]
+        
+        result_tol_count1 <-
+          result_tol_count[which(!cat_names == ""), ]
+        
+        result_tol_freq1 <-
+          result_tol_freq[which(!cat_names == ""), ]
+        
+        cat_total_count <- numeric(0)
+        
+        cat_total_freq <- numeric(0)
+        
+        if (!is.null(nrow(result_tol_count1))) {
+          for (i in 1:nrow(result_tol_count1)) {
+            for (j in 1:ncol(result_tol_count1)) {
+              if (!is.na(result_tol_count1[i, j])) {
+                cat_total_count <- c(cat_total_count, result_tol_count1[i, j])
+                cat_total_freq <-
+                  c(cat_total_freq, result_tol_freq1[i, j])
+              }
+            }
+            
+          }
+        } else {
+          for (j in 1:ncol(result_tol_count1)) {
+            if (!is.na(result_tol_count1[j])) {
+              cat_total_count <- c(cat_total_count, result_tol_count1[j])
+              cat_total_freq <-
+                c(cat_total_freq, result_tol_freq1[j])
+            }
+          }
+        }
+        
+        ##create the table for categorical variables' total
+        
+        out1_1 <- data.frame(Total = paste0(
+          format(cat_total_count, digits = digit),
+          " (",
+          format(cat_total_freq * 100, digits = digit),
+          ")"
+        ))
+        
+        colnames(out1_1) <-
+          c("Total [Mean (SD) or N(%)]")
+        
+        rownames(out1_1) <- cat_names_each
+        
+        
+        ##create the total table by combining these two tables!!!! finally!!!! we made it !!!!
+        
+        out_total <- rbind(out1, out1_1)
+        
+        out_all <- out_total
+      }
+      
+    }
+    
+    return(out_all)
+  }
+```
+
+By default, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data.  
+
+```{r}
+decrib(packagesample)
+```
+
+By identifying the outcome variable and when the outcome variable is continuous, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data without grouping based on the outcome variable. 
+
+```{r}
+decrib(packagesample, packagesample$TotChol)
+```
+
+By identifying the outcome variable and specifying altervative as overall and when the outcome variable is continuous, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data without grouping based on the outcome variable. 
+```{r}
+decrib(packagesample, packagesample$TotChol, alternative = "overall")
+```
+
+By identifying the outcome variable and when the outcome variable is categorical, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data of the total observations and grouping based on the categorical outcome variable. 
+```{r}
+decrib(packagesample, packagesample$Diabetes)
+```
+
+By identifying the outcome variable and specifying alternative as total when the outcome variable is categorical, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data of the total observations and without grouping based on the categorical outcome variable. 
+
+```{r}
+decrib(packagesample, packagesample$Diabetes, alternative = "total")
+```
+
+By identifying the outcome variable and specifying alternative as total when the outcome variable is categorical, descriptive statistics was generated by the function decrib(), it returns the descriptive statistics table of the input data by grouping based on the categorical outcome variable with the total observations. 
+
+```{r}
+decrib(packagesample, packagesample$Diabetes, alternative = "bygroup")
+```
+
+### Summary table for univariate analysis
+
+For univariate analysis, a summary table is provided based on the different type of dependent variable Y. The function will locate the variable and automatically do the analysis between each variable and dependent variables Y. 
+
+```{r, include=FALSE, echo=FALSE}
+smruni<-function(y,
+                 data,
+                 alternative = c("linear","logistic"),
+                 digit = 3,
+                 ...){
+  alternative <- match.arg(alternative)
+
+  if(!missing(alternative)){
+    if(alternative=="logistic"){
+      #logistic
+
+      #get the name and the number of the Y
+      y_length <- length(y)
+      data_names <- colnames(data)
+      name_length <- length(data_names)
+      result <- numeric(name_length)
+      for (i in 1:name_length) {
+        result[i] <- sum(y %in% factor(unlist(data[data_names[i]])))
+      }
+      ncol_y <- which(result == y_length)
+      y_group <- data_names[ncol_y]
+
+      #re-arrange the whole dataset
+      data1<-data[,-ncol_y]
+      data2<-cbind(data[,ncol_y],data1)
+      data2<-as.data.frame(data2)
+
+
+      #do the logistic regression and get the coefficient/p-value/standard error
+
+      coe <- numeric(ncol(data2)-1)
+      pva<-numeric(ncol(data2)-1)
+      se <-numeric(ncol(data2)-1)
+      for(i in 2:ncol(data2)){
+        se[i]<-summary(glm(data2[,1]~data2[,i],family=binomial))$coefficients[2,2]
+        coe[i]<-summary(glm(data2[,1]~data2[,i],family=binomial))$coefficients[2,1]
+        pva[i]<-summary(glm(data2[,1]~data2[,i],family=binomial))$coefficients[2,4]
+      }
+
+      se <-se[-1]
+      coe <-coe[-1]
+      pva <-pva[-1]
+
+      #calculate the coffience interval and the or
+      ci1 <- numeric(length(se))
+      ci2 <-numeric(length(se))
+
+      for(i in 1:length(se)){
+        ci1[i]<- coe[i]-1.96*se[i]
+        ci2[i]<- coe[i]+1.96*se[i]
+      }
+
+      or<-exp(cbind(OR=coe, ci1,ci2))
+
+      #change the form of the data
+      test<-function(q){
+        if(q<0.001) q.txt<-"<0.001"
+        else if(q<0.05) q.txt<-"<0.05"
+        else q.txt <-format(q,digits = digit)
+      }
+
+      #change the form of p-value
+      pvalue <- numeric(nrow(or))
+      for(i in 1:nrow(or)){
+        pvalue[i]<-test(pva[i])
+      }
+
+
+
+
+      #add the name of rows
+      data_names <- colnames(data2)
+      names<-data_names[-1]
+      out <- data.frame(Parameters=names,
+                        Coefficient = format(coe,digits = digit),
+                        p.value = pvalue,
+                        OR = format(or[,1],digits = digit),
+                        CI= paste0("(",
+                                   format(or[,2],digits = digit),
+                                   ",",
+                                   format(or[,3],digits = digit),
+                                   ")"))
+      names(out)[5] <- "CI(95%)"
+      out
+
+    }else{
+      #linear
+
+      #get the name and the number of the Y
+      y_length <- length(y)
+      data_names <- colnames(data)
+      name_length <- length(data_names)
+      result <- numeric(name_length)
+      for (i in 1:name_length) {
+        result[i] <- sum(y %in% factor(unlist(data[data_names[i]])))
+      }
+      ncol_y <- which(result == y_length)
+      y_group <- data_names[ncol_y]
+
+      #re-arrange the whole dataset
+      data1<-data[,-ncol_y]
+      data2<-cbind(data[,ncol_y],data1)
+      data2<-as.data.frame(data2)
+
+
+
+
+      #do the logistic regression and get the coefficient/p-value/standard error
+      coe1 <- numeric(ncol(data2)-1)
+      pva1<-numeric(ncol(data2)-1)
+      se1 <-numeric(ncol(data2)-1)
+
+      for(i in 2:ncol(data2)){
+        se1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,2]
+        coe1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,1]
+        pva1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,4]
+      }
+      se1 <-se1[-1]
+      coe1 <-coe1[-1]
+      pva1 <-pva1[-1]
+
+      #calculate the coffience interval and the or
+      ci21 <- numeric(length(se1))
+      ci22 <-numeric(length(se1))
+
+      for(i in 1:length(se1)){
+        ci21[i]<- coe1[i]-1.96*se1[i]
+        ci22[i]<- coe1[i]+1.96*se1[i]
+      }
+
+      #change the form of the data
+      test<-function(q){
+        if(q<0.001) q.txt<-"<0.001"
+        else if(q<0.05) q.txt<-"<0.05"
+        else q.txt <-format(q,digits = digit)
+      }
+
+      #change the form of p-value
+      pvalue1 <- numeric(length(pva1))
+      for(i in 1:length(pva1)){
+        pvalue1[i]<-test(pva1[i])
+      }
+
+
+      #add the name of rows
+      data_names <- colnames(data2)
+      names<-data_names[-1]
+      out1 <- data.frame(Parameters=names,
+                         Coefficient = format(coe1,digits = digit),
+                         p.value = pvalue1,
+                         CI= paste0("(",
+                                    format(ci21,digits = digit),
+                                    ",",
+                                    format(ci22,digits = digit),
+                                    ")"))
+      names(out1)[4] <- "CI(95%)"
+      out1
+    }
+  }else{
+
+    #linear
+
+    #get the name and the number of the Y
+    y_length <- length(y)
+    data_names <- colnames(data)
+    name_length <- length(data_names)
+    result <- numeric(name_length)
+    for (i in 1:name_length) {
+      result[i] <- sum(y %in% factor(unlist(data[data_names[i]])))
+    }
+    ncol_y <- which(result == y_length)
+    y_group <- data_names[ncol_y]
+
+    #re-arrange the whole dataset
+    data1<-data[,-ncol_y]
+    data2<-cbind(data[,ncol_y],data1)
+    data2<-as.data.frame(data2)
+
+
+    #do the logistic regression and get the coefficient/p-value/standard error
+    coe1 <- numeric(ncol(data2)-1)
+    pva1<-numeric(ncol(data2)-1)
+    se1 <-numeric(ncol(data2)-1)
+
+    for(i in 2:ncol(data2)){
+      se1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,2]
+      coe1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,1]
+      pva1[i]<-summary(lm(data2[,1]~data2[,i]))$coefficients[2,4]
+    }
+    se1 <-se1[-1]
+    coe1 <-coe1[-1]
+    pva1 <-pva1[-1]
+
+    #calculate the coffience interval and the or
+    ci21 <- numeric(length(se1))
+    ci22 <-numeric(length(se1))
+
+    for(i in 1:length(se1)){
+      ci21[i]<- coe1[i]-1.96*se1[i]
+      ci22[i]<- coe1[i]+1.96*se1[i]
+    }
+
+
+
+
+    #change the form of the data
+    test<-function(q){
+      if(q<0.001) q.txt<-"<0.001"
+      else if(q<0.05) q.txt<-"<0.05"
+      else q.txt <-format(q,digits = digit)
+    }
+
+    #change the form of p-value
+    pvalue1 <- numeric(length(pva1))
+    for(i in 1:length(pva1)){
+      pvalue1[i]<-test(pva1[i])
+    }
+
+
+    #add the name of rows
+    data_names <- colnames(data2)
+    names<-data_names[-1]
+    out1 <- data.frame(Parameters=names,
+                       Coefficient = format(coe1,digits = digit),
+                       p.value = pvalue1,
+                       CI= paste0("(",
+                                  format(ci21,digits = digit),
+                                  ",",
+                                  format(ci22,digits = digit),
+                                  ")"))
+    names(out1)[4] <- "CI(95%)"
+    out1
+
+  }
+}
+
+```
+
+In this function, the default is for linear regression, which is the reason why when not specifying the alternative option, the output will be same as the linear regression. The output like coefficient, p-value and CI for coefficient will be provided in the output as follows.
+
+```{r}
+smruni(packagesample$TotChol, packagesample)
+```
+
+When specifying the alternative to be linear, it returns the same summary table for linear regression as default.
+
+```{r}
+smruni(packagesample$TotChol, packagesample,alternative = "linear")
+```
+
+Univariate analysis can also be done for logistical regression by specifying alternative to be logistic. The output will contain the coefficient, odds ratio, p-value and CI for odds ratio.
+
+```{r}
+smruni(packagesample$Diabetes, packagesample,alternative = "logistic")
+```
+
+### Potential Confounders Identification
+
+This function is to identify potential confounders for one predictor of interest. The rational is to conduct univariate analysis first to assess the association between outcome variable and each of the covariates, and then also do univariate analysis to assess the association between predictor of interest and each of the covariates. Those variables that are both significant in the above two steps are regarded to be confounding. In each of univariate analysis, both linear and logistic regression are considered depending on the types of outcome variable and predictor of interest. 
+
+The three parameters of this function are predictor of interest, outcome variable and the dataset containing predictor of interest, outcome variable and other all covariates. The output is our suggested potential confounders.
+
+```{r, include=FALSE, echo=FALSE}
+confounding <- function(x, y, packagesample) {
+  #get the name and column number of outcome variable
+  
+  y_length <- length(y)
+  
+  data_names <- colnames(packagesample)
+  
+  name_length <- length(data_names)
+  
+  result <- numeric(name_length)
+  
+  for (i in 1:name_length) {
+    result[i] <- sum(y %in% factor(unlist(packagesample[data_names[i]])))
+  }
+  
+  ncol_y <- which(result == y_length)
+  
+  y_group <- data_names[ncol_y]
+  
+  #get name and column number of covariate of interest
+  
+  x_length <- length(x)
+  
+  result1 <- numeric(name_length)
+  
+  for (i in 1:name_length) {
+    result1[i] <- sum(x %in% factor(unlist(packagesample[data_names[i]])))
+  }
+  
+  ncol_x <- which(result1 == x_length)
+  
+  x_group <- data_names[ncol_x]
+  
+  #split dataset
+  
+  packagesample1 <- packagesample[c(ncol_y, ncol_x)]
+  
+  packagesample2 <- cbind(packagesample[ncol_y], packagesample[-c(ncol_y, ncol_x)])
+  
+  packagesample3 <- cbind(packagesample[ncol_x], packagesample[-c(ncol_y, ncol_x)])
+  
+  con_n <- numeric(ncol(packagesample2))
+  
+      #linear regression to assess association between outcome and each of covariates
+  if (is.null(levels(y))) {
+    for (i in 2:ncol(packagesample2)) {
+      fit2 <- lm(unlist(packagesample2[1]) ~ unlist(packagesample2[i]), data = packagesample2)
+      n_coef <- nrow(summary(fit2)$coefficients)
+      #linear regression to assess association between predictor of interest and each of covariates and identify confounders
+      if (is.null(levels(x))) {
+        fit3 <- lm(unlist(packagesample3[1]) ~ unlist(packagesample3[i]), data = packagesample3)
+        if (summary(fit2)$coefficients[2, 4] < 0.05 &
+            summary(fit3)$coefficients[2, 4] < 0.05) {
+          con_n[i - 1] <- i
+        }
+      }
+      #logistic regression to assess association between predictor of interest and each of covariates and identify confounders
+      else {
+        fit3 <- glm(unlist(packagesample3[1]) ~ unlist(packagesample3[i]),
+                    data = packagesample3,
+                    family = binomial())
+        for (j in 2:n_coef) {
+          if (summary(fit2)$coefficients[j, 4] < 0.05 &
+              summary(fit3)$coefficients[j, 4] < 0.05) {
+            con_n[i - 1] <- i
+          }
+        }
+      }
+    }
+    } 
+     #logistic regression to assess association between outcome and each of covariates
+    else{
+      for (i in 2:ncol(packagesample2)) {
+        fit2 <-
+          glm(unlist(packagesample2[1]) ~ unlist(packagesample2[2]),
+              data = packagesample2,
+              family = binomial())
+        n_coef <- nrow(summary(fit2)$coefficients)
+        #linear regression to assess association between predictor of interest and each of covariates and identify confounders
+        if (is.null(levels(x))) {
+          fit3 <- lm(unlist(packagesample3[1]) ~ unlist(packagesample3[i]), data = packagesample3)
+          if (summary(fit2)$coefficients[2, 4] < 0.05 &
+              summary(fit3)$coefficients[2, 4] < 0.05) {
+            con_n[i - 1] <- i
+          }
+        } 
+         #logistic regression to assess association between predictor of interest and each of covariates and identify confounders
+        else {
+          fit3 <- glm(unlist(packagesample3[1]) ~ unlist(packagesample3[i]),
+                      data = packagesample3,
+                      family = binomial())
+          for (j in 2:n_coef) {
+            if (summary(fit2)$coefficients[j, 4] < 0.05 &
+                summary(fit3)$coefficients[j, 4] < 0.05) {
+              con_n[i - 1] <- i
+            }
+          }
+          
+        }
+      }
+    }
+    #output suggested confounders
+    if (sum(!con_n == 0) > 0) {
+      return(paste0("Suggested confounding variables is ", colnames(packagesample2[con_n])))
+    } else {
+      return("No suggested confounding varaibles found.")
+    }
+  }
+```
+
+The following is four examples of different combination of types of predictor of interest and outcome variable.
+
+Continuous predictor of interest and categorical outcome variable:
+
+```{r}
+confounding(packagesample$Weight, packagesample$Diabetes, packagesample)
+```
+
+Continuous predictor of interest and continuous outcome variable:
+
+```{r}
+confounding(packagesample$Weight, packagesample$TotChol, packagesample)
+```
+
+Categorical predictor of interest and binary outcome variable:
+
+```{r}
+confounding(packagesample$Education, packagesample$Diabetes, packagesample)
+```
+
+Categorical predictor of interest and continuous outcome variable:
+
+```{r}
+confounding(packagesample$Education, packagesample$TotChol, packagesample)
+```
+
+###Summary table for multivariate linear regression
+
+For multivariate analysis, a summary table is also provided basing on the different type of outcome variable Y. 
+
+```{r, include=FALSE, echo=FALSE}
+smrmul<-function(x,
+              alternative = c("logistic","linear"),
+              digit = 3,
+              ...){
+
+  if(!missing(alternative)){
+    if(alternative == "logistic"){
+      b<-summary(x)
+
+      #get the p-value, coefficient, CI and odds ratio from the summary
+      pvalue1<-b$coefficients[,4]
+      es1<-b$coefficients[,1]
+
+      coi1 <- b$coefficients[,1]-1.96*b$coefficients[,2]
+      coi2 <- b$coefficients[,1]+1.96*b$coefficients[,2]
+
+      thre<-exp(cbind(CondOR=b$coefficients[,1], coi1,coi2))
+
+      pvalue1<-as.data.frame(pvalue1)
+      variable1<-rownames(pvalue1)
+      pvalues1<-cbind(variable1,es1,pvalue1,thre)
+      rownames(pvalues1)<-NULL
+
+
+      #delete the intercept row
+      tal<-pvalues1[-1,]
+
+      #choose the variables which p.value is smaller than 0.005
+      del<-which(tal[,3] < 0.05)
+      tal2<-tal[del,]
+
+      #give a function to change the form of p-value
+
+      test<-function(x){
+        if(x<0.001){
+          x.txt1<-"<0.001"
+        }else{
+          x.txt1<-"<0.05"
+        }
+        x.txt1
+      }
+
+      #change the form of p-value
+      res1 <- numeric(nrow(tal2))
+      for(i in 1:nrow(tal2)){
+        res1[i]<-test(tal2[i,3])
+      }
+
+      #For loop to change the forme of the CI
+      coi1 <- numeric(nrow(tal2))
+      coi2 <- numeric(nrow(tal2))
+      for(i in 1:nrow(tal2)){
+        coi1[i]<-format(tal2[i,5],digits = digit)
+        coi2[i]<-format(tal2[i,6],digits = digit)
+      }
+
+      #for loop to change the form of odds ratio
+      or1<-numeric(nrow(tal2))
+      for(i in 1:nrow(tal2)){
+        or1[i]<-format(tal2[i,4],digits = digit)
+      }
+
+      #for loop to change the forme of coefficient
+      cof1<-numeric(nrow(tal2))
+      for(i in 1:nrow(tal2)){
+        cof1[i]<-format(tal2[i,2],digits = digit)
+      }
+
+      #combine the p-value and the name of variavles and CI
+      out1 <- data.frame(Parameter = as.character(tal2[,1]),
+                         Coefficient = cof1,
+                         p.value = res1,
+                         OR = or1,
+                         CI= paste0("(",
+                                    coi1,
+                                    ",",
+                                    coi2,
+                                    ")"))
+      names(out1)[5] <- "CI(95%)"
+      out1
+    }else{
+      a<-summary(x)
+      ci<-confint(x)
+
+      #get the p-value from the summary
+      pvalue<-a$coefficients[,4]
+      es<-a$coefficients[,1]
+      pvalue<-as.data.frame(pvalue)
+      variable<-rownames(pvalue)
+      pvalues<-cbind(variable,es,ci,pvalue)
+      rownames(pvalues)<-NULL
+
+      #delete the intercept row
+      ta<-pvalues[-1,]
+
+      #choose the variables which p.value is smaller than 0.005
+      de<-which(ta[,5] < 0.05)
+      ta2<-ta[de,]
+
+      #give a function to change the form of p-value
+
+      test<-function(x){
+        if(x<0.001){
+          x.txt1<-"<0.001"
+        }else{
+          x.txt1<-"<0.05"
+        }
+        x.txt1
+      }
+
+
+      #change the form of p-value
+      res <- numeric(nrow(ta2))
+      for(i in 1:nrow(ta2)){
+        res[i]<-test(ta2[i,5])
+      }
+
+      #For loop to change the forme of the CI
+      ci1 <- numeric(nrow(ta2))
+      ci2 <- numeric(nrow(ta2))
+      for(i in 1:nrow(ta2)){
+        ci1[i]<-format(ta2[i,3],digits = digit)
+        ci2[i]<-format(ta2[i,4],digits = digit)
+      }
+
+      #for loop to change the forme of coefficient
+      cof<-numeric(nrow(ta2))
+      for(i in 1:nrow(ta2)){
+        cof[i]<-format(ta2[i,2],digits = digit)
+      }
+
+      #combine the p-value and the name of variavles and CI
+      out <- data.frame(Parameter = as.character(ta2[,1]),
+                        Coefficient = cof,
+                        CI= paste0("(",
+                                   ci1,
+                                   ",",
+                                   ci2,
+                                   ")"),
+                        p.value=res)
+      names(out)[3] <- "CI(95%)"
+
+      out
+    }
+  }else{
+    a<-summary(x)
+    ci<-confint(x)
+
+    #get the p-value from the summary
+    pvalue<-a$coefficients[,4]
+    es<-a$coefficients[,1]
+    pvalue<-as.data.frame(pvalue)
+    variable<-rownames(pvalue)
+    pvalues<-cbind(variable,es,ci,pvalue)
+    rownames(pvalues)<-NULL
+
+    #delete the intercept row
+    ta<-pvalues[-1,]
+
+    #choose the variables which p.value is smaller than 0.005
+    de<-which(ta[,5] < 0.05)
+    ta2<-ta[de,]
+
+    #give a function to change the form of p-value
+
+    test<-function(x){
+      if(x<0.001){
+        x.txt1<-"<0.001"
+      }else{
+        x.txt1<-"<0.05"
+      }
+      x.txt1
+    }
+
+
+    #change the form of p-value
+    res <- numeric(nrow(ta2))
+    for(i in 1:nrow(ta2)){
+      res[i]<-test(ta2[i,5])
+    }
+
+    #For loop to change the forme of the CI
+    ci1 <- numeric(nrow(ta2))
+    ci2 <- numeric(nrow(ta2))
+    for(i in 1:nrow(ta2)){
+      ci1[i]<-format(ta2[i,3],digits = digit)
+      ci2[i]<-format(ta2[i,4],digits = digit)
+    }
+
+    #for loop to change the forme of coefficient
+    cof<-numeric(nrow(ta2))
+    for(i in 1:nrow(ta2)){
+      cof[i]<-format(ta2[i,2],digits = digit)
+    }
+
+    #combine the p-value and the name of variavles and CI
+    out <- data.frame(Parameter = as.character(ta2[,1]),
+                      Coefficient = cof,
+                      CI= paste0("(",
+                                 ci1,
+                                 ",",
+                                 ci2,
+                                 ")"),
+                      p.value=res)
+    names(out)[3] <- "CI(95%)"
+    out
+  }
+}
+```
+
+
+The input is the model given by users and the alternative option to be linear or logistic. In this function, the default case is also linear regression. The output is a summary table containing the estimate of coefficient, p-value and confidence interval for coefficient.
+
+```{r}
+fit1 <- lm(TotChol~., data = packagesample)
+smrmul(fit1)
+```
+
+By specifying the alternative to be linear, it outputs the same summary table as default.
+
+```{r}
+fit1 <- lm(TotChol~., data = packagesample)
+smrmul(fit1,alternative = "linear")
+```
+
+For  binary outcome variable, the logistical regression is also considered for multivariate analysis. By specifying the alternative to be logistic, it outputs a summary table including the coefficient, the odds ratio, the confidence interval for odds ratio and the p-value.
+
+```{r}
+fit2 <- glm(Diabetes~., data = packagesample, family = binomial())
+smrmul(fit2, alternative = "logistic")
+```
+
+## Contributions
+
+Xinye Gui: Creating package, function design and modification, vignette
+
+Meng Lan: Function design and modification, documenting packages and functions, vignette
+
+Yuwei Ni: Function design and modification, documenting functions, vignette
+
+
+## References
+
+Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables. R package version 5.2.1. https://CRAN.R-project.org/package=stargazer
+
+## Session Info
+
+```{r}
+sessionInfo()
+```
+
+
