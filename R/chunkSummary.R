@@ -1,4 +1,6 @@
-data<-packagesample
+library(MASS)
+data<-birthwt
+class(birthwt)
 chunkSummary<- function(data){
   n<-nrow(data)
   n1<-ceiling(n/4)
@@ -11,9 +13,19 @@ chunkSummary<- function(data){
   dat4<-data[(n3+1):n4,,]
 
   nvar<-ncol(data)
+  mean<-numeric(nvar)
+  sd<-numeric(nvar)
   for(i in 1:nvar){
-
+    mean[i]<-mean(data[,i])
+    sd[i]<-sd(data[,i])
   }
 
-  dat2
+names<-colnames(data)
+
+out<-data.frame(Variable = names,
+                Mean = round(mean,2),
+                SD=round(sd,2))
+names(out)[3] <- "Standard Deviation"
+out
+
 }
