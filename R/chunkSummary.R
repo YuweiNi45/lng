@@ -1,6 +1,3 @@
-library(MASS)
-data<-birthwt
-class(birthwt)
 chunkSummary<- function(data){
   n<-nrow(data)
   n1<-ceiling(n/4)
