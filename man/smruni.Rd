@@ -24,19 +24,9 @@ For univariate analysis, it returns a summary table based on the type of depende
 Generate summary table proving the univariate analysis for each independent variabls and dependent variable from the whole dataset
 }
 \examples{
-library(NHANES)
-
-data<-data(NHANES)
-
-y<-data$TotChol
-
-smruni(y,data=data,alternative = "linear")
-
-smruni(y,data=data)
-
-y<-data$Diabetes
-
-smruni(y,data=dat,alternative = "logistic")
+library(MASS)
+data<-birthwt
+smruni(data$low,data=data,alternative = "logistic")
 
 }
 \references{

@@ -24,16 +24,6 @@ Generate descriptive statistical tables for different type of outcome variables 
 \description{
 Generic function to create tables providing descriptive statistics summary for overall and in different groups.
 }
-\examples{
-library(NHANES)
-data(NHANES)
-data <- NHANES[, 10:14]
-data1 <- data[complete.cases(data), ]
-dat <- data1
-decrib(dat)
-
-
-}
 \references{
 Hlavac Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables. R package version 5.2.1. https://CRAN.R-project.org/package=stargazer
 }

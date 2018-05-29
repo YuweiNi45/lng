@@ -22,19 +22,16 @@ For multivariate analysis, it returns a summary table only for significant varia
 Generate summary table proving the multivariate analysis for all variabls and dependent variable from the whole dataset
 }
 \examples{
-library(NHANES)
+library(MASS)
 
-data<-data(NHANES)
+data<-birthwt
 
-fit1 <- lm(TotChol~., data = data)
+fit1 <- lm(age~., data = data)
 
 smrmul(fit1,alternative = "linear")
 
 smrmul(fit1)
 
-fit2 <- glm(Diabetes~. + TotChol:Education, data = data, family = binomial())
-
-smrmul(fit2,alternative = "logistic")
 
 }
 \references{
