@@ -14,10 +14,6 @@
 #'
 #' \code{\link[stats]{glm}}
 #'
-#' @examples
-#'library(NHANES)
-#'confounding(NHANES$Weight, NHANES$Diabetes, NHANES)
-#'
 #'@import tidyverse
 #'
 #'@export
