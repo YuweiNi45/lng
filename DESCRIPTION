@@ -8,7 +8,7 @@ Author: c(person("Meng","Lan",email="menglan36@gmail.com",role = c("aut")),
 Maintainer: The package maintainer <yourself@somewhere.net>
 Description: More about what it does (maybe more than one line)
     Use four spaces when indenting paragraphs within the Description.
-Depends: ggplot2
+Depends: ggplot2,tidyverse,NHANES
 Suggests: dplyr,
     knitr,
     rmarkdown
@@ -18,4 +18,4 @@ LazyData: true
 RoxygenNote: 6.0.1
 VignetteBuilder: knitr
 LinkingTo: Rcpp
-Imports: Rcpp 
+Imports: Rcpp
