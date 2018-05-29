@@ -35,7 +35,7 @@ decrib(dat)
 
 }
 \references{
-Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables. R package version 5.2.1. https://CRAN.R-project.org/package=stargazer
+Hlavac Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables. R package version 5.2.1. https://CRAN.R-project.org/package=stargazer
 }
 \seealso{
 \code{\link[stats]{anova}}
