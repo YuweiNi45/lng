@@ -19,11 +19,6 @@ It returns a list that contains the suggested potential confounders.
 \description{
 Generic function to dectect potential confounders for one predictor of interest no matter the outcome varible and predictor of interest are continuous or categorical.
 }
-\examples{
-library(NHANES)
-confounding(NHANES$Weight, NHANES$Diabetes, NHANES)
-
-}
 \references{
 Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S Language. Wadsworth & Brooks/Cole.
 }

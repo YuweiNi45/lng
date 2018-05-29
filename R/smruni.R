@@ -13,21 +13,10 @@
 #'
 #' @references Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S Language. Wadsworth & Brooks/Cole.
 #'
-#'
-#' @examples
-#' library(NHANES)
-#'
-#' data<-data(NHANES)
-#'
-#' y<-data$TotChol
-#'
-#' smruni(y,data=data,alternative = "linear")
-#'
-#' smruni(y,data=data)
-#'
-#' y<-data$Diabetes
-#'
-#'smruni(y,data=dat,alternative = "logistic")
+#'@examples
+#'library(MASS)
+#'data<-birthwt
+#'smruni(data$low,data=data,alternative = "logistic")
 #'
 #'@import tidyverse
 #'

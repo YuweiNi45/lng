@@ -17,13 +17,6 @@
 #'
 #' \code{\link[stats]{kruskal.test}}
 #'
-#' @examples
-#' library(NHANES)
-#' data(NHANES)
-#' data <- NHANES[, 10:14]
-#' data1 <- data[complete.cases(data), ]
-#' dat <- data1
-#' decrib(dat)
 #'
 #'
 #'@import NHANES
