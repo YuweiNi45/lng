@@ -2,13 +2,30 @@
 % Please edit documentation in R/RcppExports.R
 \name{chunkSummaryC}
 \alias{chunkSummaryC}
-\title{Get the chunkSummary}
+\title{Chunk Summary via R and C++}
 \usage{
 chunkSummaryC(x)
 }
 \arguments{
 \item{x}{A dataframe.}
 }
+\value{
+A table is provided, which include the names of each column and the results.
+}
 \description{
-Get the chunkSummary
+Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks. An R function calls the C++.
+}
+\examples{
+library(Rcpp)
+library(MASS)
+data<-birthwt
+sourceCpp("src/chunkSummaryC.cpp")
+chunkSummaryC(data)
+
+}
+\references{
+Hadley Wickham (2015) R package.
+}
+\seealso{
+\code{\link[lng]{chunkSummaryR}}
 }

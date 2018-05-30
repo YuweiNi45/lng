@@ -2,13 +2,28 @@
 % Please edit documentation in R/chunkSummaryR.R
 \name{chunkSummaryR}
 \alias{chunkSummaryR}
-\title{chunkSummaryR}
+\title{Chunk Summary}
 \usage{
 chunkSummaryR(data)
 }
 \arguments{
-\item{data}{A dataframe}
+\item{data}{A data frame}
+}
+\value{
+A table is provided, which include the names of each column and the results.
 }
 \description{
-Generate summary table proving the multivariate analysis for all variabls and dependent variable from the whole dataset
+Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks.
+}
+\examples{
+library(MASS)
+data<-birthwt
+chunkSummaryR(data)
+
+}
+\references{
+Hadley Wickham (2015) R package.
+}
+\seealso{
+\code{\link[lng]{chunkSummaryC}}
 }
