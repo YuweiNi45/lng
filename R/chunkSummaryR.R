@@ -1,3 +1,11 @@
+#' chunkSummary
+#'
+#' Generate summary table proving the multivariate analysis for all variabls and dependent variable from the whole dataset
+#'
+#'
+#' @param data  A dataframe
+#'
+#'@export
 chunkSummaryR<- function(data){
   n<-nrow(data)
   n1<-ceiling(n/4)
