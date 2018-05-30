@@ -27,13 +27,13 @@ chunkSummaryR<- function(data){
   sd4<-round(apply(dat4,2,sd),2)
 
 
-  data_name<-colnames(data)
-  names<-data_name[-1]
-  out<-data.frame(Variable = names,
+  names<-colnames(data)
+  out<-data.frame(Variables = names,
                   Chunk1 = data.frame(mean1,sd1),
                   Chunk2 = data.frame(mean2,sd2),
                   Chunk3 = data.frame(mean3,sd3),
-                  Chunk4 = data.frame(mean4,sd4))
+                  Chunk4 = data.frame(mean4,sd4),
+                  row.names = NULL)
   out
 
 }
