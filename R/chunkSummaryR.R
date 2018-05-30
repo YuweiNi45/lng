@@ -1,4 +1,4 @@
-chunkSummary<- function(data){
+chunkSummaryR<- function(data){
   n<-nrow(data)
   n1<-ceiling(n/4)
   n2<-ceiling(n/2)
