@@ -10,11 +10,7 @@ devtools::install_github("YuweiNi45/lng")
 library(Rcpp)
 library(MASS)
 data<-birthwt
-summary(data)
-?lng
-?smruni
-
-
+head(data,10)
 ```
 
 
