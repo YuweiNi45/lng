@@ -8,9 +8,11 @@
 #' @return A table is provided, which include the names of each column and the results.
 #'
 #' @examples
-#' library(MASS)
-#' data<-birthwt
-#' chunkSummaryR(data)
+#' a<-rnorm(5,3)
+#' b<-rnorm(5,7)
+#' c<-cbind(a,b)
+#' c<-data.frame(c)
+#' chunkSummaryR(c)
 #'
 #' @seealso \code{\link[lng]{chunkSummaryC}}
 #'

@@ -15,14 +15,6 @@ A table is provided, which include the names of each column and the results.
 \description{
 Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks. An R function calls the C++.
 }
-\examples{
-library(Rcpp)
-library(MASS)
-data<-birthwt
-sourceCpp("src/chunkSummaryC.cpp")
-chunkSummaryC(data)
-
-}
 \references{
 Hadley Wickham (2015) R package.
 }

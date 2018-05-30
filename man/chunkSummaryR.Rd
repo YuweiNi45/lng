@@ -16,9 +16,11 @@ A table is provided, which include the names of each column and the results.
 Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks.
 }
 \examples{
-library(MASS)
-data<-birthwt
-chunkSummaryR(data)
+a<-rnorm(5,3)
+b<-rnorm(5,7)
+c<-cbind(a,b)
+c<-data.frame(c)
+chunkSummaryR(c)
 
 }
 \references{

@@ -9,13 +9,6 @@
 #'
 #' @return A table is provided, which include the names of each column and the results.
 #'
-#' @examples
-#' library(Rcpp)
-#' library(MASS)
-#' data<-birthwt
-#' sourceCpp("src/chunkSummaryC.cpp")
-#' chunkSummaryC(data)
-#'
 #' @seealso \code{\link[lng]{chunkSummaryR}}
 #'
 #' @references Hadley Wickham (2015) R package.

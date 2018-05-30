@@ -22,11 +22,12 @@ For multivariate analysis, it returns a summary table only for significant varia
 Generate summary table proving the multivariate analysis for all variabls and dependent variable from the whole dataset
 }
 \examples{
-library(MASS)
+a<-rnorm(5,3)
+b<-rnorm(5,7)
+c<-cbind(a,b)
+c<-data.frame(c)
 
-data<-birthwt
-
-fit1 <- lm(age~., data = data)
+fit1 <- lm(a~., data = c)
 
 smrmul(fit1,alternative = "linear")
 

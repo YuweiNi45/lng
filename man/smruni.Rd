@@ -23,12 +23,6 @@ For univariate analysis, it returns a summary table based on the type of depende
 \description{
 Generate summary table proving the univariate analysis for each independent variabls and dependent variable from the whole dataset
 }
-\examples{
-library(MASS)
-data<-birthwt
-smruni(data$low,data=data,alternative = "logistic")
-
-}
 \references{
 Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S Language. Wadsworth & Brooks/Cole.
 }

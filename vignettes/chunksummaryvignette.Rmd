@@ -2,28 +2,52 @@
 title: "chunkSummary"
 author: "Yuwei Ni"
 date: "5/29/2018"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
+The lng package is used for observational study. Two new functions are added recently to divide the input data into four chunks and calculate the mean and standard deviation of each variable. 
+
+
+All changes are finished in the new branch: try. The purposes of two new functions are same, while one (chunkSummaryR) is a pure R funcion, and the other (chunkSummaryC) is a R function calls a C++ function.
+
+
+Follows are the test part, it uses one sample dataset to check whether the two functions give the same resuls.
+
+
 #Install required packages and select one data to test
-```{r}
-devtools::install_github("YuweiNi45/lng")
+```{r,warning=FALSE,message=FALSE}
+devtools::install_github("YuweiNi45/lng",ref = "try")
+library(devtools)
 library(Rcpp)
 library(MASS)
+library(lng)
 data<-birthwt
-head(data,10)
+summ<-head(data,10)
+knitr::kable(summ,caption = "The first ten rows of sample data")
+
 ```
 
+
+
+**The results of pure R function**
 
 ```{r}
 #chunkSummaryR
-chunkSummaryR(data)
+result1<-chunkSummaryR(data)
+knitr::kable(result1,caption = "The results of pure R function")
 ```
+
+
+
+**The results of R and C++ function**
 
 
 ```{r}
 #chunkSummaryC
-sourceCpp("src/chunkSummaryC.cpp")
-chunkSummaryC(data)
+sourceCpp("/Users/summer/Downloads/package/lng/src/chunkSummaryC.cpp")
+result2<-chunkSummaryC(data)
+knitr::kable(result2,caption = "The results of R and C++ function")
 ```
 
