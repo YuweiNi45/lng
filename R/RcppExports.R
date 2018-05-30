@@ -5,7 +5,7 @@
 #'
 #' Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks. An R function calls the C++.
 #'
-#' @param x A dataframe.
+#' @param x A data frame.
 #'
 #' @return A table is provided, which include the names of each column and the results.
 #'
