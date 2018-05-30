@@ -1,8 +1,10 @@
 #include <Rcpp.h>
 using namespace Rcpp;
-
-
-
+//' Get the chunkSummary
+//'
+//' @param x A dataframe.
+//' @export
+//'
 // [[Rcpp::export]]
 DataFrame chunkSummaryC(DataFrame x) {
   int nrow = x.nrow();
@@ -15,6 +17,7 @@ DataFrame chunkSummaryC(DataFrame x) {
   int n2 = ceil(n21);
   int n3 = ceil(n31);
   int n4 = ceil(n41);
+
 
 
   NumericMatrix dataall = internal::convert_using_rfunction(x, "as.matrix");
@@ -78,15 +81,3 @@ DataFrame chunkSummaryC(DataFrame x) {
  return final;
 
 }
-
-
-// You can include R code blocks in C++ files processed with sourceCpp
-// (useful for testing and development). The R code will be automatically
-// run after the compilation.
-//
-
-/*** R
-library(MASS)
-chunkSummaryC(birthwt)
-
-*/
