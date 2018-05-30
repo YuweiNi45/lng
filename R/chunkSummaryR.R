@@ -1,4 +1,4 @@
-#' chunkSummary
+#' chunkSummaryR
 #'
 #' Generate summary table proving the multivariate analysis for all variabls and dependent variable from the whole dataset
 #'
