@@ -23,8 +23,11 @@ using namespace Rcpp;
 //'
 // [[Rcpp::export]]
 DataFrame chunkSummaryC(DataFrame x) {
+  //Get the total numbers of rows and columns
   int nrow = x.nrow();
   int ncol = x.ncol();
+
+  //Divide the rows into four parts
   double n11 = float(nrow)/4;
   double n21 = float(nrow)/2;
   double n31 = float(nrow)*3/4;
@@ -34,16 +37,16 @@ DataFrame chunkSummaryC(DataFrame x) {
   int n3 = ceil(n31);
   int n4 = ceil(n41);
 
-
-
+  //Transfer the type of dataset from data frame into matrix to do analysis
   NumericMatrix dataall = internal::convert_using_rfunction(x, "as.matrix");
 
-
+ //Divide the whole dataset into four chunks based on rows
  NumericMatrix dat1 =dataall(Range(0,n1-1),Range(0,ncol-1));
  NumericMatrix dat2 =dataall(Range(n1,n2-1),Range(0,ncol-1));
  NumericMatrix dat3 =dataall(Range(n2,n3-1),Range(0,ncol-1));
  NumericMatrix dat4 =dataall(Range(n3,n4-1),Range(0,ncol-1));
 
+ //Calculate the mean and standard deviation of chunk 1
  NumericVector ave1 = no_init(ncol);
  NumericVector std1 = no_init(ncol);
  for(int i = 0; i <ncol; i++){
@@ -52,7 +55,7 @@ DataFrame chunkSummaryC(DataFrame x) {
    std1[i] = sd(result1);
  }
 
-
+ //Calculate the mean and standard deviation of chunk 2
  NumericVector ave2 = no_init(ncol);
  NumericVector std2 = no_init(ncol);
  for(int i = 0; i <ncol; i++){
@@ -61,7 +64,7 @@ DataFrame chunkSummaryC(DataFrame x) {
    std2[i] = sd(result2);
  }
 
-
+ //Calculate the mean and standard deviation of chunk 3
  NumericVector ave3 = no_init(ncol);
  NumericVector std3 = no_init(ncol);
  for(int i = 0; i <ncol; i++){
@@ -70,7 +73,7 @@ DataFrame chunkSummaryC(DataFrame x) {
    std3[i] = sd(result3);
  }
 
-
+ //Calculate the mean and standard deviation of chunk 4
  NumericVector ave4 = no_init(ncol);
  NumericVector std4 = no_init(ncol);
  for(int i = 0; i <ncol; i++){
@@ -80,8 +83,10 @@ DataFrame chunkSummaryC(DataFrame x) {
  }
 
 
+ //Get the names of the columns
  CharacterVector names = Rf_getAttrib(x, R_NamesSymbol);
 
+ //Combine four chunks and the names of each column
  List final;
  final["Variables"] = names;
  final["Chunk1.mean1"]=round(ave1,2);
