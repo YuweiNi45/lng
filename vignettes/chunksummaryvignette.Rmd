@@ -5,6 +5,7 @@ date: "5/29/2018"
 output: html_document
 ---
 
+#Install required packages and select one data to test
 ```{r}
 devtools::install_github("YuweiNi45/lng")
 library(Rcpp)
