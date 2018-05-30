@@ -2,6 +2,7 @@
 
 export()
 export(chunkSummaryC)
+export(chunkSummaryR)
 export(confounding)
 export(decrib)
 export(smrmul)
