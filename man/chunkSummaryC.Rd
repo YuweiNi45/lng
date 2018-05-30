@@ -7,7 +7,7 @@
 chunkSummaryC(x)
 }
 \arguments{
-\item{x}{A dataframe.}
+\item{x}{A data frame.}
 }
 \value{
 A table is provided, which include the names of each column and the results.
