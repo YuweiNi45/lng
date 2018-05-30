@@ -2,7 +2,7 @@
 % Please edit documentation in R/chunkSummaryR.R
 \name{chunkSummaryR}
 \alias{chunkSummaryR}
-\title{chunkSummary}
+\title{chunkSummaryR}
 \usage{
 chunkSummaryR(data)
 }
