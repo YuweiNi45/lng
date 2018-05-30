@@ -15,11 +15,12 @@
 #'
 #'
 #' @examples
-#' library(MASS)
+#' a<-rnorm(5,3)
+#' b<-rnorm(5,7)
+#' c<-cbind(a,b)
+#' c<-data.frame(c)
 #'
-#' data<-birthwt
-#'
-#' fit1 <- lm(age~., data = data)
+#' fit1 <- lm(a~., data = c)
 #'
 #' smrmul(fit1,alternative = "linear")
 #'
