@@ -1,0 +1,32 @@
+---
+title: "chunkSummary"
+author: "Yuwei Ni"
+date: "5/29/2018"
+output: html_document
+---
+
+```{r}
+devtools::install_github("YuweiNi45/lng")
+library(Rcpp)
+library(MASS)
+data<-birthwt
+summary(data)
+?lng
+?smruni
+
+
+```
+
+
+```{r}
+#chunkSummaryR
+chunkSummaryR(data)
+```
+
+
+```{r}
+#chunkSummaryC
+sourceCpp("src/chunkSummaryC.cpp")
+chunkSummaryC(data)
+```
+
