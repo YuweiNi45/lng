@@ -1,8 +1,24 @@
 #include <Rcpp.h>
 using namespace Rcpp;
-//' Get the chunkSummary
+//' Chunk Summary via R and C++
 //'
-//' @param x A dataframe.
+//' Divide the whole dataset into four chunks and calculate the mean and standard deviation of each chunks. An R function calls the C++.
+//'
+//' @param x A data frame.
+//'
+//' @return A table is provided, which include the names of each column and the results.
+//'
+//' @examples
+//' library(Rcpp)
+//' library(MASS)
+//' data<-birthwt
+//' sourceCpp("src/chunkSummaryC.cpp")
+//' chunkSummaryC(data)
+//'
+//' @seealso \code{\link[lng]{chunkSummaryR}}
+//'
+//' @references Hadley Wickham (2015) R package.
+//'
 //' @export
 //'
 // [[Rcpp::export]]
