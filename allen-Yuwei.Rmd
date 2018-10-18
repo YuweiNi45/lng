@@ -1,0 +1,564 @@
+---
+title: "Comparison of Allen Motor cortex data"
+author: "Davide Risso"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    fig_height: 7
+    fig_width: 7
+    toc: yes
+    code_folding: hide
+    toc_float: yes
+editor_options:
+  chunk_output_type: console
+---
+
+Here, we focus only on the data generated at the Allen. We compare SMART-seq cells and nuclei as well as 10X genomics data.
+
+We will first look at batch effects within each platform and then across. We will try to quantify the amount of batch effects before and after correction.
+
+```{r options, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(cache=FALSE, error=FALSE, message=FALSE, warning=FALSE)
+# NMF::nmf.options(grid.patch=TRUE) #get rid of blank page in heatmap pdf
+
+library(scone)  #campare single-cell RNA-seq and other throughput analyses
+library(Rtsne)
+library(zinbwave)
+library(readr)
+library(dplyr)
+library(magrittr)
+library(BiocParallel)
+library(clusterExperiment)
+library(irlba)
+library(HDF5Array)
+library(DelayedArray)
+library(scater)
+library(scran)
+library(lubridate)
+library(matrixStats)
+```
+
+# SMARTer single cell
+
+```{r smart_sc}
+read_sc <- FALSE
+
+
+cell_exon<- read_csv("mouse_MOp_cells_gene_expression_matrices/mouse_MOp_cells_exon-matrix.csv")
+cell_intron<-read.csv("mouse_MOp_cells_gene_expression_matrices/mouse_MOp_cells_2018-10-04_intron-matrix.csv")
+cell_col<-read.csv("mouse_MOp_cells_gene_expression_matrices/mouse_MOp_cells_samples-columns.csv")
+
+
+
+if(read_sc) {
+  #smart_sc_exon <- read_csv("SMARTer_cells_MOp/exon_counts.csv.gz")
+  smart_sc_exon<-cell_exon
+  smart_sc_intron<- cell_intron
+  smart_sc_md<-cell_col
+  #smart_sc_intron <- read_csv("data/zeng/SMARTer_cells_MOp/intron_counts.csv.gz")
+  #smart_sc_md <- read_csv("data/zeng/SMARTer_cells_MOp/sample_metadata.csv")
+  #smart_sc_cl1 <- read_csv("../allen/data/smart_seq/aibs_rseq_analysis_2018.02.09.001/cl.csv")
+  #smart_sc_cl2 <- read_csv("../allen/data/smart_seq/aibs_rseq_analysis_2018.02.09.001/cl.df.csv")
+  
+  #colnames(smart_sc_exon)[1]<-"sample_id"
+  #colnames(smart_sc_intron)[1]<-"sample_id"
+  
+  #stopifnot(all(smart_sc_exon$sample_id == smart_sc_intron$sample_id))
+  #stopifnot(all(colnames(smart_sc_exon) == colnames(smart_sc_intron)))
+  stopifnot(all(rownames(smart_sc_exon) == rownames(smart_sc_intron)))
+  
+  
+  smart_sc <- as.matrix(smart_sc_exon[,-1]) + as.matrix(smart_sc_intron[,-1])
+  rownames(smart_sc)<-smart_sc_exon$X1
+  #colnames(smart_sc) <- smart_sc_exon$sample_id
+  
+  #inner_join(smart_sc_cl1, smart_sc_cl2, by = c("x" = "cluster_id")) %>%
+   # select(X1.x, cluster_label, category_label) %>%
+    #dplyr::filter(X1.x %in% smart_sc_exon$sample_id) -> smart_sc_cl
+  #colnames(smart_sc_cl)[1] <- "sample_id"
+}
+```
+
+Even within a single dataset there are potential batch effects (that might be actual biological effects).
+For instance, there are male and female donors, right and left hemisphere, different genotypes/drivers and different individuals. In addition, there are different layers, slices; the samples were prepared between 7/2016 and 12/2017 and sequenced in batches.
+
+```{r smart_sc_scater}
+if(read_sc) {
+  # Adjust data types for coldata
+  #coldata <- full_join(smart_sc_md, smart_sc_cl, by = "sample_id")   #cell_col 
+  coldata<-smart_sc_md
+  #rownames are same
+  
+  coldata$donor_id <- as.character(coldata$donor)
+  coldata$facs_date <- as.character(coldata$facs_date)
+  coldata$year <- sapply(strsplit(coldata$facs_date, "/"), function(x) x[3])
+  coldata$ym <- paste0(coldata$year, "/", sapply(strsplit(coldata$facs_date, "/"), function(x) x[1]))
+  smart_sce <- SingleCellExperiment(assays = list(counts = smart_sc),
+                                    colData = coldata)
+  
+  
+  # Gene Filtering: Highly expressed in at least 10 cells (keeping all samples)
+  num_reads <- 50
+  num_cells <- 10
+  is_quality <- DelayedArray::rowSums(assay(smart_sce) >= num_reads ) >= num_cells
+  table(is_quality)
+  
+  smart_sce <- smart_sce[which(is_quality), ]
+  smart_sce <- normalize(smart_sce)
+  smart_sce
+  
+  # PCA and t-SNE
+  smart_sce <- runPCA(smart_sce, ntop = 1000, ncomponents = 50)
+  smart_sce <- runTSNE(smart_sce, use_dimred = "PCA")
+  smart_sce
+  save(smart_sce, file = "data/zeng/smarter_cells.rda")
+} else {
+  load("data/zeng/smarter_cells.rda")
+}
+pal <- bigPalette
+```
+
+## PCA
+
+```{r sc_pca}
+colnames(coldata)
+plotPCA(smart_sce, colour_by = "sample_id")
+# plotPCA(smart_sce, colour_by = "donor_id")
+# plotPCA(smart_sce, colour_by = "donor_sex")
+# plotPCA(smart_sce, colour_by = "donor_genotype")
+# plotPCA(smart_sce, colour_by = "donor_driver")
+# plotPCA(smart_sce, colour_by = "donor_reporter")
+# plotPCA(smart_sce, colour_by = "dissected_hemisphere")
+# plotPCA(smart_sce, colour_by = "dissected_slice")
+# plotPCA(smart_sce, colour_by = "dissected_subregion")
+# plotPCA(smart_sce, colour_by = "facs_gate")
+# plotPCA(smart_sce, colour_by = "year")
+# plotPCA(smart_sce, colour_by = "ym")
+# plotPCA(smart_sce, colour_by = "sequencing_batch")
+# plotPCA(smart_sce, colour_by = "alignment_percent_total")
+```
+
+## t-SNE
+
+```{r sc_tsne}
+plotTSNE(smart_sce, colour_by = "category_label")
+plotTSNE(smart_sce, colour_by = "donor")
+# plotTSNE(smart_sce, colour_by = "donor_sex")
+# plotTSNE(smart_sce, colour_by = "donor_genotype")
+# plotTSNE(smart_sce, colour_by = "donor_driver")
+# plotTSNE(smart_sce, colour_by = "donor_reporter")
+# plotTSNE(smart_sce, colour_by = "dissected_hemisphere")
+# plotTSNE(smart_sce, colour_by = "dissected_slice")
+# plotTSNE(smart_sce, colour_by = "dissected_subregion")
+# plotTSNE(smart_sce, colour_by = "facs_gate")
+# plotTSNE(smart_sce, colour_by = "year")
+# plotTSNE(smart_sce, colour_by = "ym")
+# plotTSNE(smart_sce, colour_by = "sequencing_batch")
+# plotTSNE(smart_sce, colour_by = "alignment_percent_total")
+```
+
+# SMARTer single nuclei
+
+```{r smart_sn}
+
+
+nul_exon<-read_csv("mouse_MOp_nuclei_gene_expression_matrices_2018-10-04/mouse_MOp_nuclei_2018-10-04_exon-matrix.csv")
+nul_intron<-read_csv("mouse_MOp_nuclei_gene_expression_matrices_2018-10-04/mouse_MOp_nuclei_2018-10-04_intron-matrix.csv")
+nul_col<-read_csv("mouse_MOp_nuclei_gene_expression_matrices_2018-10-04/mouse_MOp_nuclei_2018-10-04_samples-columns.csv")
+
+
+
+
+read_sn <- FALSE
+
+if(read_sn) {
+  #smart_sn_exon <- read_csv("data/zeng/SMARTer_nuclei_MOp/exon_counts.csv.gz")
+  smart_sn_exon<-nul_exon
+  smart_sn_intron<-nul_intron
+  smart_sn_md<-nul_col
+  
+  #colnames(smart_sn_exon)[1]<-"sample_id"
+  #colnames(smart_sn_intron)[1]<-"sample_id"
+  
+  #smart_sn_intron <- read_csv("data/zeng/SMARTer_nuclei_MOp/intron_counts.csv.gz")
+  #smart_sn_md <- read_csv("data/zeng/SMARTer_nuclei_MOp/sample_metadata.csv")
+  
+  #stopifnot(all(smart_sn_exon$sample_id == smart_sn_intron$sample_id))
+  #stopifnot(all(colnames(smart_sn_exon) == colnames(smart_sn_intron)))
+  
+  smart_sn <- as.matrix(smart_sn_exon[,-1]) + as.matrix(smart_sn_intron[,-1])
+  rownames(smart_sn)<-smart_sn_exon$X1
+  #colnames(smart_sn) <- smart_sn_exon$sample_id
+}
+```
+
+
+```{r smart_sn_scater}
+if(read_sn) {
+  # Adjust data types for coldata
+  coldata <- smart_sn_md
+  #coldata$donor_id <- as.character(coldata$donor_id)
+  coldata$donor_id <- as.character(coldata$donor)
+  coldata$year <- sapply(strsplit(coldata$facs_date, "/"), function(x) x[3])
+  coldata$ym <- paste0(coldata$year, "/", sapply(strsplit(coldata$facs_date, "/"), function(x) x[1]))
+  smart_sne <- SingleCellExperiment(assays = list(counts = smart_sn),
+                                    colData = coldata)
+  
+  
+  # Gene Filtering: Highly expressed in at least 10 cells (keeping all samples)
+  num_reads <- 50
+  num_cells <- 10
+  is_quality <- DelayedArray::rowSums(assay(smart_sne) >= num_reads ) >= num_cells
+  table(is_quality)
+  
+  smart_sne <- smart_sne[which(is_quality),]
+  smart_sne <- normalize(smart_sne)
+  smart_sne
+  
+  # PCA and t-SNE
+  smart_sne <- runPCA(smart_sne, ntop = 1000, ncomponents = 50)
+  smart_sne <- runTSNE(smart_sne, use_dimred = "PCA")
+  smart_sne
+  
+  save(smart_sne, file = "data/zeng/smarter_nuclei.rda")
+} else {
+  load("data/zeng/smarter_nuclei.rda")
+}
+```
+
+## PCA
+
+```{r sn_pca}
+# plotPCA(smart_sne, colour_by = "donor_id")
+# plotPCA(smart_sne, colour_by = "donor_sex")
+# plotPCA(smart_sne, colour_by = "donor_genotype")
+plotPCA(smart_sne, colour_by = "donor")
+# plotPCA(smart_sne, colour_by = "donor_reporter")
+# plotPCA(smart_sne, colour_by = "dissected_hemisphere")
+# plotPCA(smart_sne, colour_by = "dissected_slice")
+# plotPCA(smart_sne, colour_by = "dissected_subregion")
+# plotPCA(smart_sne, colour_by = "facs_gate")
+# plotPCA(smart_sne, colour_by = "year")
+# plotPCA(smart_sne, colour_by = "ym")
+# plotPCA(smart_sne, colour_by = "sequencing_batch")
+# plotPCA(smart_sne, colour_by = "alignment_percent_total")
+```
+
+## t-SNE
+
+```{r sn_tsne}
+# plotTSNE(smart_sne, colour_by = "donor_id")
+# plotTSNE(smart_sne, colour_by = "donor_sex")
+# plotTSNE(smart_sne, colour_by = "donor_genotype")
+plotTSNE(smart_sne, colour_by = "donor")
+# plotTSNE(smart_sne, colour_by = "donor_reporter")
+# plotTSNE(smart_sne, colour_by = "dissected_hemisphere")
+# plotTSNE(smart_sne, colour_by = "dissected_slice")
+# plotTSNE(smart_sne, colour_by = "dissected_subregion")
+# plotTSNE(smart_sne, colour_by = "facs_gate")
+# plotTSNE(smart_sne, colour_by = "ym")
+# plotTSNE(smart_sne, colour_by = "sequencing_batch")
+# plotTSNE(smart_sne, colour_by = "alignment_percent_total")
+```
+
+# Combine data
+
+```{r combine}
+run_combine <- FALSE
+
+if(run_combine) {
+  common_genes <- intersect(rownames(smart_sce), rownames(smart_sne))
+  combined <- cbind(counts(smart_sce[common_genes,]), counts(smart_sne[common_genes,]))
+  
+  common_cols <- intersect(colnames(colData(smart_sce)), colnames(colData(smart_sne)))
+  coldata <- rbind(colData(smart_sce)[,common_cols], colData(smart_sne)[,common_cols])
+  
+  sce <- SingleCellExperiment(assays = list(counts = combined),
+                              colData = coldata)
+  
+  colData(sce)$Protocol <- c(rep("single_cell", ncol(smart_sce)), 
+                             rep("single_nucleus", ncol(smart_sne)))
+  
+  rm(combined)
+}
+rm(smart_sce)
+rm(smart_sne)
+
+```
+
+```{r check_batch}
+if(run_combine){
+  sce <- normalize(sce)
+  sce <- runPCA(sce, ntop = 1000, ncomponents = 50)
+  sce <- runTSNE(sce, use_dimred = "PCA")
+} else {
+  load("data/zeng/smarter_cells_nuclei.rda")
+}
+```
+
+## QC
+
+```{r qc}
+sce <- calculateQCMetrics(sce)
+#qc <- as.matrix(colData(sce)[,c("sequencing_total_reads", "alignment_percent_total",
+ #                                     "alignment_percent_exons", "alignment_percent_rrna",
+ #                                     "alignment_percent_ncrna", "alignment_percent_mt_exons",
+  #                                    "alignment_percent_intron", #"alignment_percent_intergenic",
+ #                                     "alignment_percent_synthetic", #"alignment_percent_unmapped",
+ #                                     "alignment_percent_unique",
+  #                                    "log10_total_features_by_counts", "log10_total_features"
+   #                                   )])
+qc <- as.matrix(colData(sce)[,c("total_reads", "percent_aligned_reads_total",
+                                      "percent_exon_reads", "percent_rrna_reads",
+                                      "percent_intron_reads", "percent_intergenic_reads",
+                                      "percent_synth_reads",
+                                      "percent_unique_reads",
+                                      "log10_total_features_by_counts", "log10_total_counts"
+                                      )])
+ribo_idx <- grep("^Rpl", rownames(sce))
+mito_idx <- grep("^Mt", rownames(sce))
+ribo_pct <- colSums(counts(sce)[ribo_idx,])/colSums(counts(sce)) * 100
+mito_pct <- colSums(counts(sce)[mito_idx,])/colSums(counts(sce)) * 100
+qc <- cbind(qc, mito_pct, ribo_pct)
+
+colData(sce)$mito_pct <- mito_pct
+colData(sce)$ribo_pct <- ribo_pct
+
+qcpca <- prcomp(qc, scale. = TRUE)
+plot(qcpca$x[,1:2], pch=19, col=pal[as.factor(sce$Protocol)])
+
+pca <- reducedDim(sce, "PCA")
+
+cors <- lapply(1:5, function(i) abs(cor(pca, qc, method="spearman")))
+cors <- unlist(cors)
+bars <- data.frame(AbsoluteCorrelation=cors,
+                   QC=factor(rep(colnames(qc), 5), levels=colnames(qc)),
+                   Dimension=as.factor(rep(paste0("PC", 1:5), each=ncol(qc))))
+
+bars %>%
+  ggplot(aes(Dimension, AbsoluteCorrelation, group=QC, fill=QC)) +
+  geom_bar(stat="identity", position='dodge') +
+  scale_fill_manual(values = pal) + ylim(0, 1) +
+  theme(legend.text=element_text(size=6))
+
+fig_qc <- data.frame(qc, qcpca$x[,1:2], protocol = sce$Protocol)
+
+#ggplot(fig_qc, aes(PC1, PC2, color = sequencing_total_reads)) +
+ # geom_point() + scale_color_continuous(low = "blue", high = "yellow")
+
+"total_reads", "percent_aligned_reads_total",
+                                      "percent_exon_reads", "percent_rrna_reads",
+                                      "percent_intron_reads", "percent_intergenic_reads",
+                                      "percent_synth_reads",
+                                      "percent_unique_reads",
+                                      "log10_total_features_by_counts", "log10_total_counts"
+
+ggplot(fig_qc, aes(PC1, PC2, color = total_reads)) +
+  geom_point() + scale_color_continuous(low = "blue", high = "yellow")
+
+ggplot(fig_qc, aes(PC1, PC2, color = percent_unique_reads)) +
+  geom_point() + scale_color_continuous(low = "blue", high = "yellow")
+
+ggplot(fig_qc, aes(total_reads, percent_unique_reads, color = protocol)) +
+  geom_point()
+
+ggplot(fig_qc, aes(protocol, total_reads)) +
+  geom_boxplot()
+
+ggplot(fig_qc, aes(protocol, percent_aligned_reads_total)) +
+  geom_boxplot()
+
+ggplot(fig_qc, aes(protocol, percent_exon_reads)) +
+  geom_boxplot()
+
+ggplot(fig_qc, aes(protocol, percent_intron_reads)) +
+  geom_boxplot()
+
+ggplot(fig_qc, aes(protocol, log10_total_features_by_counts)) +
+  geom_boxplot()
+
+ggplot(data.frame(cbind(pca, colData(sce))), aes(Protocol, PC1)) +
+  geom_boxplot()
+
+#ggplot(fig_qc, aes(PC1, PC2, color = alignment_percent_unique)) +
+ # geom_point() + scale_color_continuous(low = "blue", high = "yellow")
+
+#ggplot(fig_qc, aes(sequencing_total_reads, alignment_percent_unique, color = protocol)) +
+ # geom_point()
+
+#ggplot(fig_qc, aes(protocol, sequencing_total_reads)) +
+ # geom_boxplot()
+
+#ggplot(fig_qc, aes(protocol, alignment_percent_total)) +
+ # geom_boxplot()
+
+#ggplot(fig_qc, aes(protocol, alignment_percent_exons)) +
+ # geom_boxplot()
+
+#ggplot(fig_qc, aes(protocol, alignment_percent_intron)) +
+ # geom_boxplot()
+
+#log10_total_features_by_countsggplot(fig_qc, aes(protocol, log10_total_features)) +
+ # geom_boxplot()
+
+#ggplot(data.frame(cbind(pca, colData(sce))), aes(Protocol, PC1)) +
+ # geom_boxplot()
+```
+
+
+## PCA
+
+```{r combine_pca}
+plotPCA(sce, colour_by = "Protocol")
+# plotPCA(sce, colour_by = "donor_id")
+# plotPCA(sce, colour_by = "donor_sex")
+# plotPCA(sce, colour_by = "donor_genotype")
+# plotPCA(sce, colour_by = "donor_driver")
+# plotPCA(sce, colour_by = "donor_reporter")
+# plotPCA(sce, colour_by = "dissected_hemisphere")
+# plotPCA(sce, colour_by = "dissected_slice")
+# plotPCA(sce, colour_by = "dissected_subregion")
+# plotPCA(sce, colour_by = "facs_gate")
+# plotPCA(sce, colour_by = "year")
+# plotPCA(sce, colour_by = "ym")
+# plotPCA(sce, colour_by = "sequencing_batch")
+# plotPCA(sce, colour_by = "alignment_percent_total")
+# 
+```
+
+## t-SNE
+
+```{r combine_tsne}
+plotTSNE(sce, colour_by = "Protocol")
+# plotTSNE(sce, colour_by = "donor_id")
+# plotTSNE(sce, colour_by = "donor_sex")
+# plotTSNE(sce, colour_by = "donor_genotype")
+# plotTSNE(sce, colour_by = "donor_driver")
+# plotTSNE(sce, colour_by = "donor_reporter")
+# plotTSNE(sce, colour_by = "dissected_hemisphere")
+# plotTSNE(sce, colour_by = "dissected_slice")
+# plotTSNE(sce, colour_by = "dissected_subregion")
+# plotTSNE(sce, colour_by = "facs_gate")
+# plotTSNE(sce, colour_by = "ym")
+# plotTSNE(sce, colour_by = "sequencing_batch")
+# plotTSNE(sce, colour_by = "alignment_percent_total")
+
+```
+
+## zinbwave
+
+```{r zinbwave}
+if(run_combine) {
+  vars <- rowVars(logcounts(sce))
+  names(vars) <- rownames(sce)
+  vars <- sort(vars, decreasing = TRUE)
+  
+  library(BiocParallel)
+  library(doParallel)
+  registerDoParallel(6)
+  register(DoparParam())
+  sce_small <- sce[names(vars)[1:1000],]
+  sce_small <- sce_small[rowSums(counts(sce_small))>0, colSums(counts(sce_small))>0]
+  
+  reducedDims(sce_small) <- SimpleList()
+  zinb <- zinbwave(sce_small, X = "~ Protocol", K = 10)
+  zinb <- runTSNE(zinb, use_dimred = "zinbwave", check_duplicates = FALSE)
+}
+```
+
+```{r zinb_tsne}
+plotTSNE(zinb, colour_by = "Protocol")
+# plotTSNE(zinb, colour_by = "donor_id")
+# plotTSNE(zinb, colour_by = "donor_sex")
+# plotTSNE(zinb, colour_by = "donor_genotype")
+# plotTSNE(zinb, colour_by = "donor_driver")
+# plotTSNE(zinb, colour_by = "donor_reporter")
+# plotTSNE(zinb, colour_by = "dissected_hemisphere")
+# plotTSNE(zinb, colour_by = "dissected_slice")
+# plotTSNE(zinb, colour_by = "dissected_subregion")
+# plotTSNE(zinb, colour_by = "facs_gate")
+# plotTSNE(zinb, colour_by = "ym")
+# plotTSNE(zinb, colour_by = "sequencing_batch")
+# plotTSNE(zinb, colour_by = "alignment_percent_total")
+
+```
+
+
+```{r save}
+if(run_combine) {
+save(zinb, sce, file = "data/zeng/smarter_cells_nuclei.rda")
+}
+```
+
+## QC after zinbwave
+
+```{r zinb_qc}
+pca <- reducedDim(zinb, "zinbwave")
+
+cors <- lapply(1:5, function(i) abs(cor(pca, qc, method="spearman")))
+cors <- unlist(cors)
+bars <- data.frame(AbsoluteCorrelation=cors,
+                   QC=factor(rep(colnames(qc), 5), levels=colnames(qc)),
+                   Dimension=as.factor(rep(paste0("W", 1:5), each=ncol(qc))))
+
+bars %>%
+  ggplot(aes(Dimension, AbsoluteCorrelation, group=QC, fill=QC)) +
+  geom_bar(stat="identity", position='dodge') +
+  scale_fill_manual(values = pal) + ylim(0, 1) +
+  theme(legend.text=element_text(size=6))
+
+ggplot(data.frame(cbind(pca, colData(sce))), aes(Protocol, W1)) +
+  geom_boxplot()
+```
+
+# Clustering
+
+## Seurat Consensus
+
+```{r seurat}
+load("data/zeng/Seurat_smarter.rda")
+pal <- massivePalette
+
+plot(reducedDim(cl_seu, "TSNE"), pch=19, col=pal[as.factor(primaryClusterNamed(cl_seu))])
+```
+
+
+## RSEC (k-means)
+
+```{r rsec}
+load("data/zeng/RSEC3_smarter.rda")
+plot(reducedDim(cl, "TSNE"), pch=19, col=pal[as.factor(primaryClusterNamed(cl))])
+```
+
+## SNN subsample
+
+```{r snn1}
+load("data/zeng/SNN_subsample2_smarter.rda")
+plot(reducedDim(cl_snn, "TSNE"), pch=19, col=pal[as.factor(primaryClusterNamed(cl_snn))])
+```
+
+## Compare
+
+```{r compare_clust}
+clustMatrix <- cbind(primaryClusterNamed(cl_seu), primaryClusterNamed(cl_snn), primaryClusterNamed(cl))
+colnames(clustMatrix) <- c("Seurat", "SNN", "RSEC")
+cons <- ClusterExperiment(zinb, clustMatrix)
+
+plotClusters(cons)
+
+cons <- combineMany(cons, whichClusters = 1:3, proportion = 0.6, minSize = 10)
+
+plotClusters(cons, whichClusters = "all")
+
+plot(reducedDim(cons, "TSNE"), pch=19, col=pal[as.factor(primaryClusterNamed(cons))])
+
+plotTableClusters(cons, whichClusters = c("Seurat", "RSEC"))
+plotTableClusters(cons, whichClusters = c("Seurat", "SNN"))
+plotTableClusters(cons, whichClusters = c("SNN", "RSEC"))
+```
+
+# Relate to AIBS clusters from larger analysis
+
+```{r scmap}
+
+```
